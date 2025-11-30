@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Door Security Documentation App">
+  <title>Door Security Documentation</title>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { margin: 0; padding: 0; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState } = React;
+
+    const DoorSecurityApp = () => {
+      const [doors, setDoors] = useState([]);
+      const [currentDoor, setCurrentDoor] = useState({
+        name: '',
+        photos: {
+          exteriorOverview: null,
+          exteriorDevice: null,
+          interiorOverview: null,
+          interiorDevice: null,
+          lock: null
+        },
+        note: ''
+      });
+      const [isCapturing, setIsCapturing] = useState(false);
+
+      const photoLabels = {
+        exteriorOverview: 'Tổng quan phía ngoài cửa',
+        exteriorDevice: 'Thiết bị phía ngoài cửa',
+        interiorOverview: 'Tổng quan phía trong cửa',
+        interiorDevice: 'Thiết bị phía trong cửa',
+        lock: 'Khóa'
+      };
+
+      const handlePhotoCapture = (photoType, e) => {
+        const file = e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            setCurrentDoor(prev => ({
+              ...prev,
+              photos: {
+                ...prev.photos,
+                [photoType]: reader.result
+              }
+            }));
+          };
+          reader.readAsDataURL(file);
+        }
+      };
+
+      const isCurrentDoorComplete = () => {
+        return currentDoor.name && 
+               Object.values(currentDoor.photos).every(photo => photo !== null);
+      };
+
+      const saveDoor = () => {
+        if (isCurrentDoorComplete()) {
+          setDoors([...doors, { ...currentDoor }]);
+          setCurrentDoor({
+            name: '',
+            photos: {
+              exteriorOverview: null,
+              exteriorDevice: null,
+              interiorOverview: null,
+              interiorDevice: null,
+              lock: null
+            },
+            note: ''
+          });
+          setIsCapturing(false);
+        }
+      };
+
+      const deleteDoor = (index) => {
+        setDoors(doors.filter((_, i) => i !== index));
+      };
+
+      const exportToWord = () => {
+        let html = `
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="UTF-8">
+            <style>
+              @page {
+                size: A4;
+                margin: 1.5cm;
+              }
+              body {
+                font-family: Arial, sans-serif;
+                margin: 0;
+                padding: 0;
+              }
+              h1 {
+                text-align: center;
+                color: #1e3a5f;
+                margin-bottom: 20px;
+                font-size: 18px;
+              }
+              table {
+                width: 100%;
+                border-collapse: collapse;
+                table-layout: fixed;
+              }
+              th {
+                background-color: #1e3a5f;
+                color: white;
+                padding: 10px;
+                text-align: center;
+                font-weight: bold;
+                border: 1px solid #000;
+                font-size: 12px;
+              }
+              td {
+                border: 1px solid #000;
+                padding: 8px;
+                vertical-align: top;
+                page-break-inside: avoid;
+              }
+              tr {
+                page-break-inside: avoid;
+                page-break-after: always;
+              }
+              tr:last-child {
+                page-break-after: auto;
+              }
+              .name-cell {
+                width: 15%;
+                text-align: center;
+                font-weight: bold;
+                font-size: 14px;
+              }
+              .photo-cell {
+                width: 70%;
+                padding: 5px;
+              }
+              .note-cell {
+                width: 15%;
+                font-size: 11px;
+              }
+              .photo-label {
+                font-weight: bold;
+                font-size: 9px;
+                color: #1e3a5f;
+                margin-bottom: 2px;
+                text-align: center;
+              }
+              img {
+                width: 180px;
+                height: 270px;
+                object-fit: cover;
+                display: block;
+                margin: 0 auto;
+              }
+              .medium-img {
+                width: 180px;
+                height: 140px;
+                object-fit: cover;
+              }
+              .lock-img {
+                width: 370px;
+                height: 165px;
+                object-fit: cover;
+              }
+            </style>
+          </head>
+          <body>
+            <h1>Site Pictures</h1>
+            <table>
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Attached Pictures</th>
+                  <th>Note</th>
+                </tr>
+              </thead>
+              <tbody>
+        `;
+
+        doors.forEach((door, index) => {
+          html += `
+                <tr>
+                  <td class="name-cell">${door.name}</td>
+                  <td class="photo-cell">
+                    <table style="width: 100%; border: none;">
+                      <tr>
+                        <td style="width: 50%; border: none; padding: 2px; text-align: center;">
+                          <div class="photo-label">Unsecured side</div>
+                          <img src="${door.photos.exteriorOverview}" alt="Exterior Overview" />
+                        </td>
+                        <td style="width: 50%; border: none; padding: 2px; text-align: center;">
+                          <div class="photo-label">Secured side</div>
+                          <img src="${door.photos.interiorOverview}" alt="Interior Overview" />
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="width: 50%; border: none; padding: 2px; text-align: center;">
+                          <img src="${door.photos.exteriorDevice}" alt="Exterior Device" class="medium-img" />
+                        </td>
+                        <td style="width: 50%; border: none; padding: 2px; text-align: center;">
+                          <img src="${door.photos.interiorDevice}" alt="Interior Device" class="medium-img" />
+                        </td>
+                      </tr>
+                      <tr>
+                        <td colspan="2" style="border: none; padding: 2px; text-align: center;">
+                          <img src="${door.photos.lock}" alt="Lock" class="lock-img" />
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                  <td class="note-cell">${door.note || ''}</td>
+                </tr>
+          `;
+        });
+
+        html += `
+              </tbody>
+            </table>
+          </body>
+          </html>
+        `;
+
+        const blob = new Blob(['\ufeff', html], {
+          type: 'application/msword'
+        });
+
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'Door_Security_Report.doc';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      };
+
+      const CameraIcon = () => (
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+          <circle cx="12" cy="13" r="4"></circle>
+        </svg>
+      );
+
+      const DownloadIcon = () => (
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="7 10 12 15 17 10"></polyline>
+          <line x1="12" y1="15" x2="12" y2="3"></line>
+        </svg>
+      );
+
+      const PlusIcon = () => (
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+      );
+
+      const XIcon = () => (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      );
+
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
+          <div className="max-w-6xl mx-auto">
+            <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
+              <h1 className="text-3xl font-bold text-gray-800 mb-2 flex items-center gap-3">
+                <CameraIcon />
+                Door Security Documentation
+              </h1>
+              <p className="text-gray-600">Chụp ảnh và tạo báo cáo cho các cửa</p>
+            </div>
+
+            {!isCapturing ? (
+              <div className="space-y-6">
+                <button
+                  onClick={() => setIsCapturing(true)}
+                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-4 px-6 rounded-lg flex items-center justify-center gap-3 transition-colors shadow-md"
+                >
+                  <PlusIcon />
+                  Thêm cửa mới
+                </button>
+
+                {doors.length > 0 && (
+                  <>
+                    <div className="bg-white rounded-xl shadow-lg p-6">
+                      <h2 className="text-xl font-bold text-gray-800 mb-4">
+                        Danh sách cửa đã chụp ({doors.length})
+                      </h2>
+                      <div className="space-y-4">
+                        {doors.map((door, index) => (
+                          <div key={index} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                            <div className="flex items-center justify-between mb-3">
+                              <h3 className="text-lg font-semibold text-gray-800">{door.name}</h3>
+                              <button
+                                onClick={() => deleteDoor(index)}
+                                className="text-red-500 hover:text-red-700 transition-colors"
+                              >
+                                <XIcon />
+                              </button>
+                            </div>
+                            <div className="grid grid-cols-5 gap-2">
+                              {Object.entries(door.photos).map(([key, photo]) => (
+                                <div key={key} className="text-center">
+                                  <img src={photo} alt={photoLabels[key]} className="w-full h-24 object-cover rounded border" />
+                                  <p className="text-xs text-gray-600 mt-1">{photoLabels[key]}</p>
+                                </div>
+                              ))}
+                            </div>
+                            {door.note && (
+                              <div className="mt-3 p-2 bg-gray-50 rounded">
+                                <p className="text-sm text-gray-700"><strong>Note:</strong> {door.note}</p>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={exportToWord}
+                      className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-4 px-6 rounded-lg flex items-center justify-center gap-3 transition-colors shadow-md"
+                    >
+                      <DownloadIcon />
+                      Xuất file Word
+                    </button>
+                  </>
+                )}
+              </div>
+            ) : (
+              <div className="bg-white rounded-xl shadow-lg p-6">
+                <h2 className="text-2xl font-bold text-gray-800 mb-6">Thêm cửa mới</h2>
+                
+                <div className="mb-6">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Tên cửa *
+                  </label>
+                  <input
+                    type="text"
+                    value={currentDoor.name}
+                    onChange={(e) => setCurrentDoor({...currentDoor, name: e.target.value})}
+                    placeholder="Ví dụ: Main entrance"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+                  {Object.entries(photoLabels).map(([key, label]) => (
+                    <div key={key} className="border-2 border-dashed border-gray-300 rounded-lg p-4 hover:border-indigo-400 transition-colors">
+                      <label className="cursor-pointer">
+                        <div className="text-center">
+                          {currentDoor.photos[key] ? (
+                            <img src={currentDoor.photos[key]} alt={label} className="w-full h-48 object-cover rounded mb-2" />
+                          ) : (
+                            <div className="flex flex-col items-center justify-center h-48 text-gray-400">
+                              <CameraIcon />
+                              <p className="mt-2 text-sm">Chụp ảnh</p>
+                            </div>
+                          )}
+                          <p className="text-sm font-medium text-gray-700 mt-2">{label}</p>
+                        </div>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          onChange={(e) => handlePhotoCapture(key, e)}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mb-6">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Ghi chú (tùy chọn)
+                  </label>
+                  <textarea
+                    value={currentDoor.note}
+                    onChange={(e) => setCurrentDoor({...currentDoor, note: e.target.value})}
+                    placeholder="Thêm ghi chú..."
+                    rows="3"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div className="flex gap-4">
+                  <button
+                    onClick={saveDoor}
+                    disabled={!isCurrentDoorComplete()}
+                    className={`flex-1 py-3 px-6 rounded-lg font-semibold transition-colors ${
+                      isCurrentDoorComplete()
+                        ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    }`}
+                  >
+                    Lưu cửa này
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsCapturing(false);
+                      setCurrentDoor({
+                        name: '',
+                        photos: {
+                          exteriorOverview: null,
+                          exteriorDevice: null,
+                          interiorOverview: null,
+                          interiorDevice: null,
+                          lock: null
+                        },
+                        note: ''
+                      });
+                    }}
+                    className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 py-3 px-6 rounded-lg font-semibold transition-colors"
+                  >
+                    Hủy
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    };
+
+    ReactDOM.render(<DoorSecurityApp />, document.getElementById('root'));
+  </script>
+</body>
+</html>
