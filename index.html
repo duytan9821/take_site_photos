@@ -3,502 +3,414 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Door Security Documentation App">
   <title>SnapReport</title>
-  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    body { margin: 0; padding: 0; }
-  </style>
 </head>
-<body>
-  <div id="root"></div>
+<body class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+  <div class="max-w-6xl mx-auto p-6">
+    <!-- Header -->
+    <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
+      <h1 class="text-3xl font-bold text-gray-800 mb-2">📷 SnapReport</h1>
+      <p class="text-gray-600">Project Photo Documentation</p>
+    </div>
 
-  <script type="text/babel">
-    const { useState } = React;
+    <!-- Main Screen -->
+    <div id="mainScreen">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <button onclick="selectType('door')" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-8 px-6 rounded-lg shadow-md transition-colors">
+          <div class="text-5xl mb-3">🚪</div>
+          <div class="text-xl">Thêm Door</div>
+        </button>
+        <button onclick="selectType('camera')" class="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-8 px-6 rounded-lg shadow-md transition-colors">
+          <div class="text-5xl mb-3">📹</div>
+          <div class="text-xl">Thêm Camera</div>
+        </button>
+      </div>
 
-    const DoorSecurityApp = () => {
-      const [doors, setDoors] = useState([]);
-      const [currentDoor, setCurrentDoor] = useState({
-        name: '',
-        photos: {
-          exteriorOverview: null,
-          exteriorDevice: null,
-          interiorOverview: null,
-          interiorDevice: null,
-          lock: null
-        },
-        note: ''
-      });
-      const [isCapturing, setIsCapturing] = useState(false);
-      const [fileName, setFileName] = useState('Door_Security_Report');
+      <div id="itemsList" class="mt-6 space-y-4"></div>
 
-      const photoLabels = {
-        exteriorOverview: 'Tổng quan phía ngoài cửa',
-        exteriorDevice: 'Thiết bị phía ngoài cửa',
-        interiorOverview: 'Tổng quan phía trong cửa',
-        interiorDevice: 'Thiết bị phía trong cửa',
-        lock: 'Khóa'
-      };
+      <div id="exportSection" class="hidden mt-6 space-y-4">
+        <div class="bg-white rounded-xl shadow-lg p-6">
+          <h2 class="text-xl font-bold text-gray-800 mb-4">Tên file xuất</h2>
+          <input type="text" id="fileName" value="Site_Pictures_Report" placeholder="Nhập tên file" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
+          <p class="text-sm text-gray-500 mt-2">File sẽ được lưu với tên: <span id="filePreview">Site_Pictures_Report</span>.doc</p>
+        </div>
+        <button onclick="exportToWord()" class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-4 px-6 rounded-lg shadow-md transition-colors">
+          ⬇️ Xuất file Word
+        </button>
+      </div>
+    </div>
 
-      const resizeImage = (file, targetWidth, targetHeight) => {
-        return new Promise((resolve) => {
-          const reader = new FileReader();
-          reader.onload = (e) => {
-            const img = new Image();
-            img.onload = () => {
-              const canvas = document.createElement('canvas');
-              canvas.width = targetWidth;
-              canvas.height = targetHeight;
-              const ctx = canvas.getContext('2d');
+    <!-- Door Capture Screen -->
+    <div id="doorCaptureScreen" class="hidden">
+      <div class="bg-white rounded-xl shadow-lg p-6">
+        <h2 class="text-2xl font-bold text-gray-800 mb-6">🚪 Thêm Door mới</h2>
+        
+        <div class="mb-6">
+          <label class="block text-sm font-semibold text-gray-700 mb-2">Tên Door *</label>
+          <input type="text" id="doorName" placeholder="Ví dụ: Main entrance" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
+        </div>
 
-              // Calculate aspect ratios
-              const imgRatio = img.width / img.height;
-              const targetRatio = targetWidth / targetHeight;
-
-              let drawWidth, drawHeight, offsetX = 0, offsetY = 0;
-
-              if (imgRatio > targetRatio) {
-                // Image is wider, fit to height
-                drawHeight = targetHeight;
-                drawWidth = img.width * (targetHeight / img.height);
-                offsetX = (targetWidth - drawWidth) / 2;
-              } else {
-                // Image is taller, fit to width
-                drawWidth = targetWidth;
-                drawHeight = img.height * (targetWidth / img.width);
-                offsetY = (targetHeight - drawHeight) / 2;
-              }
-
-              // Fill background white
-              ctx.fillStyle = '#FFFFFF';
-              ctx.fillRect(0, 0, targetWidth, targetHeight);
-
-              // Draw image centered
-              ctx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
-
-              resolve(canvas.toDataURL('image/jpeg', 0.85));
-            };
-            img.src = e.target.result;
-          };
-          reader.readAsDataURL(file);
-        });
-      };
-
-      const handlePhotoCapture = async (photoType, e) => {
-        const file = e.target.files[0];
-        if (file) {
-          let targetWidth, targetHeight;
-          
-          if (photoType === 'exteriorOverview' || photoType === 'interiorOverview') {
-            targetWidth = 216;
-            targetHeight = 348;
-          } else if (photoType === 'lock') {
-            targetWidth = 437;
-            targetHeight = 214;
-          } else {
-            targetWidth = 216;
-            targetHeight = 183;
-          }
-
-          const resizedImage = await resizeImage(file, targetWidth, targetHeight);
-          
-          setCurrentDoor(prev => ({
-            ...prev,
-            photos: {
-              ...prev.photos,
-              [photoType]: resizedImage
-            }
-          }));
-        }
-      };
-
-      const isCurrentDoorComplete = () => {
-        return currentDoor.name && 
-               Object.values(currentDoor.photos).every(photo => photo !== null);
-      };
-
-      const saveDoor = () => {
-        if (isCurrentDoorComplete()) {
-          setDoors([...doors, { ...currentDoor }]);
-          setCurrentDoor({
-            name: '',
-            photos: {
-              exteriorOverview: null,
-              exteriorDevice: null,
-              interiorOverview: null,
-              interiorDevice: null,
-              lock: null
-            },
-            note: ''
-          });
-          setIsCapturing(false);
-        }
-      };
-
-      const deleteDoor = (index) => {
-        setDoors(doors.filter((_, i) => i !== index));
-      };
-
-      const exportToWord = () => {
-        if (!fileName.trim()) {
-          alert('Vui lòng nhập tên file!');
-          return;
-        }
-
-        let html = `
-          <!DOCTYPE html>
-          <html>
-          <head>
-            <meta charset="UTF-8">
-            <style>
-              @page {
-                size: A4;
-                margin: 1.5cm;
-              }
-              body {
-                font-family: Arial, sans-serif;
-                margin: 0;
-                padding: 0;
-              }
-              h1 {
-                text-align: center;
-                color: #1e3a5f;
-                margin-bottom: 20px;
-                font-size: 18px;
-              }
-              table {
-                width: 100%;
-                border-collapse: collapse;
-                table-layout: fixed;
-              }
-              th {
-                background-color: #1e3a5f;
-                color: white;
-                padding: 10px;
-                text-align: center;
-                font-weight: bold;
-                border: 1px solid #000;
-                font-size: 12px;
-              }
-              td {
-                border: 1px solid #000;
-                padding: 8px;
-                vertical-align: top;
-                page-break-inside: avoid;
-              }
-              tr {
-                page-break-inside: avoid;
-                page-break-after: always;
-              }
-              tr:last-child {
-                page-break-after: auto;
-              }
-              .name-cell {
-                width: 15%;
-                text-align: center;
-                font-weight: bold;
-                font-size: 14px;
-              }
-              .photo-cell {
-                width: 70%;
-                padding: 5px;
-              }
-              .note-cell {
-                width: 15%;
-                font-size: 11px;
-              }
-              .photo-label {
-                font-weight: bold;
-                font-size: 9px;
-                color: #1e3a5f;
-                margin-bottom: 2px;
-                text-align: center;
-              }
-              img {
-                width: 180px;
-                height: 270px;
-                object-fit: cover;
-                display: block;
-                margin: 0 auto;
-              }
-              .medium-img {
-                width: 180px;
-                height: 140px;
-                object-fit: cover;
-              }
-              .lock-img {
-                width: 370px;
-                height: 165px;
-                object-fit: cover;
-              }
-            </style>
-          </head>
-          <body>
-            <h1>Site Pictures</h1>
-            <table>
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Attached Pictures</th>
-                  <th>Note</th>
-                </tr>
-              </thead>
-              <tbody>
-        `;
-
-        doors.forEach((door, index) => {
-          html += `
-                <tr>
-                  <td class="name-cell">${door.name}</td>
-                  <td class="photo-cell">
-                    <table style="width: 100%; border: none;">
-                      <tr>
-                        <td style="width: 50%; border: none; padding: 2px; text-align: center;">
-                          <div class="photo-label">Unsecured side</div>
-                          <img src="${door.photos.exteriorOverview}" alt="Exterior Overview" />
-                        </td>
-                        <td style="width: 50%; border: none; padding: 2px; text-align: center;">
-                          <div class="photo-label">Secured side</div>
-                          <img src="${door.photos.interiorOverview}" alt="Interior Overview" />
-                        </td>
-                      </tr>
-                      <tr>
-                        <td style="width: 50%; border: none; padding: 2px; text-align: center;">
-                          <img src="${door.photos.exteriorDevice}" alt="Exterior Device" class="medium-img" />
-                        </td>
-                        <td style="width: 50%; border: none; padding: 2px; text-align: center;">
-                          <img src="${door.photos.interiorDevice}" alt="Interior Device" class="medium-img" />
-                        </td>
-                      </tr>
-                      <tr>
-                        <td colspan="2" style="border: none; padding: 2px; text-align: center;">
-                          <img src="${door.photos.lock}" alt="Lock" class="lock-img" />
-                        </td>
-                      </tr>
-                    </table>
-                  </td>
-                  <td class="note-cell">${door.note || ''}</td>
-                </tr>
-          `;
-        });
-
-        html += `
-              </tbody>
-            </table>
-          </body>
-          </html>
-        `;
-
-        const blob = new Blob(['\ufeff', html], {
-          type: 'application/msword'
-        });
-
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `${fileName.trim()}.doc`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-      };
-
-      const CameraIcon = () => (
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
-          <circle cx="12" cy="13" r="4"></circle>
-        </svg>
-      );
-
-      const DownloadIcon = () => (
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-          <polyline points="7 10 12 15 17 10"></polyline>
-          <line x1="12" y1="15" x2="12" y2="3"></line>
-        </svg>
-      );
-
-      const PlusIcon = () => (
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <line x1="12" y1="5" x2="12" y2="19"></line>
-          <line x1="5" y1="12" x2="19" y2="12"></line>
-        </svg>
-      );
-
-      const XIcon = () => (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <line x1="18" y1="6" x2="6" y2="18"></line>
-          <line x1="6" y1="6" x2="18" y2="18"></line>
-        </svg>
-      );
-
-      return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
-          <div className="max-w-6xl mx-auto">
-            <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
-              <h1 className="text-3xl font-bold text-gray-800 mb-2 flex items-center gap-3">
-                <CameraIcon />
-                SnapReport
-              </h1>
-              <p className="text-gray-600">Project Photo Documentation</p>
-            </div>
-
-            {!isCapturing ? (
-              <div className="space-y-6">
-                <button
-                  onClick={() => setIsCapturing(true)}
-                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-4 px-6 rounded-lg flex items-center justify-center gap-3 transition-colors shadow-md"
-                >
-                  <PlusIcon />
-                  Thêm cửa mới
-                </button>
-
-                {doors.length > 0 && (
-                  <>
-                    <div className="bg-white rounded-xl shadow-lg p-6">
-                      <h2 className="text-xl font-bold text-gray-800 mb-4">
-                        Danh sách cửa đã chụp ({doors.length})
-                      </h2>
-                      <div className="space-y-4">
-                        {doors.map((door, index) => (
-                          <div key={index} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                            <div className="flex items-center justify-between mb-3">
-                              <h3 className="text-lg font-semibold text-gray-800">{door.name}</h3>
-                              <button
-                                onClick={() => deleteDoor(index)}
-                                className="text-red-500 hover:text-red-700 transition-colors"
-                              >
-                                <XIcon />
-                              </button>
-                            </div>
-                            <div className="grid grid-cols-5 gap-2">
-                              {Object.entries(door.photos).map(([key, photo]) => (
-                                <div key={key} className="text-center">
-                                  <img src={photo} alt={photoLabels[key]} className="w-full h-24 object-cover rounded border" />
-                                  <p className="text-xs text-gray-600 mt-1">{photoLabels[key]}</p>
-                                </div>
-                              ))}
-                            </div>
-                            {door.note && (
-                              <div className="mt-3 p-2 bg-gray-50 rounded">
-                                <p className="text-sm text-gray-700"><strong>Note:</strong> {door.note}</p>
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    <button
-                      onClick={exportToWord}
-                      className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-4 px-6 rounded-lg flex items-center justify-center gap-3 transition-colors shadow-md"
-                    >
-                      <DownloadIcon />
-                      Xuất file Word
-                    </button>
-                  </>
-                )}
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+          <div class="border-2 border-dashed border-gray-300 rounded-lg p-4">
+            <label class="cursor-pointer">
+              <div id="doorPreview1" class="text-center h-48 flex flex-col items-center justify-center text-gray-400">
+                <span class="text-4xl mb-2">📷</span>
+                <p class="text-sm">Chụp ảnh</p>
               </div>
-            ) : (
-              <div className="bg-white rounded-xl shadow-lg p-6">
-                <h2 className="text-2xl font-bold text-gray-800 mb-6">Thêm cửa mới</h2>
-                
-                <div className="mb-6">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Tên cửa *
-                  </label>
-                  <input
-                    type="text"
-                    value={currentDoor.name}
-                    onChange={(e) => setCurrentDoor({...currentDoor, name: e.target.value})}
-                    placeholder="Ví dụ: Main entrance"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                  />
-                </div>
+              <p class="text-sm font-medium text-gray-700 mt-2 text-center">Tổng quan phía ngoài</p>
+              <input type="file" accept="image/*" capture="environment" onchange="handleDoorPhoto(this, 1, 216, 348)" class="hidden">
+            </label>
+          </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
-                  {Object.entries(photoLabels).map(([key, label]) => (
-                    <div key={key} className="border-2 border-dashed border-gray-300 rounded-lg p-4 hover:border-indigo-400 transition-colors">
-                      <label className="cursor-pointer">
-                        <div className="text-center">
-                          {currentDoor.photos[key] ? (
-                            <img src={currentDoor.photos[key]} alt={label} className="w-full h-48 object-cover rounded mb-2" />
-                          ) : (
-                            <div className="flex flex-col items-center justify-center h-48 text-gray-400">
-                              <CameraIcon />
-                              <p className="mt-2 text-sm">Chụp ảnh</p>
-                            </div>
-                          )}
-                          <p className="text-sm font-medium text-gray-700 mt-2">{label}</p>
-                        </div>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          capture="environment"
-                          onChange={(e) => handlePhotoCapture(key, e)}
-                          className="hidden"
-                        />
-                      </label>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="mb-6">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Ghi chú (tùy chọn)
-                  </label>
-                  <textarea
-                    value={currentDoor.note}
-                    onChange={(e) => setCurrentDoor({...currentDoor, note: e.target.value})}
-                    placeholder="Thêm ghi chú..."
-                    rows="3"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                  />
-                </div>
-
-                <div className="flex gap-4">
-                  <button
-                    onClick={saveDoor}
-                    disabled={!isCurrentDoorComplete()}
-                    className={`flex-1 py-3 px-6 rounded-lg font-semibold transition-colors ${
-                      isCurrentDoorComplete()
-                        ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
-                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    }`}
-                  >
-                    Lưu cửa này
-                  </button>
-                  <button
-                    onClick={() => {
-                      setIsCapturing(false);
-                      setCurrentDoor({
-                        name: '',
-                        photos: {
-                          exteriorOverview: null,
-                          exteriorDevice: null,
-                          interiorOverview: null,
-                          interiorDevice: null,
-                          lock: null
-                        },
-                        note: ''
-                      });
-                    }}
-                    className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 py-3 px-6 rounded-lg font-semibold transition-colors"
-                  >
-                    Hủy
-                  </button>
-                </div>
+          <div class="border-2 border-dashed border-gray-300 rounded-lg p-4">
+            <label class="cursor-pointer">
+              <div id="doorPreview2" class="text-center h-48 flex flex-col items-center justify-center text-gray-400">
+                <span class="text-4xl mb-2">📷</span>
+                <p class="text-sm">Chụp ảnh</p>
               </div>
-            )}
+              <p class="text-sm font-medium text-gray-700 mt-2 text-center">Thiết bị phía ngoài</p>
+              <input type="file" accept="image/*" capture="environment" onchange="handleDoorPhoto(this, 2, 216, 183)" class="hidden">
+            </label>
+          </div>
+
+          <div class="border-2 border-dashed border-gray-300 rounded-lg p-4">
+            <label class="cursor-pointer">
+              <div id="doorPreview3" class="text-center h-48 flex flex-col items-center justify-center text-gray-400">
+                <span class="text-4xl mb-2">📷</span>
+                <p class="text-sm">Chụp ảnh</p>
+              </div>
+              <p class="text-sm font-medium text-gray-700 mt-2 text-center">Tổng quan phía trong</p>
+              <input type="file" accept="image/*" capture="environment" onchange="handleDoorPhoto(this, 3, 216, 348)" class="hidden">
+            </label>
+          </div>
+
+          <div class="border-2 border-dashed border-gray-300 rounded-lg p-4">
+            <label class="cursor-pointer">
+              <div id="doorPreview4" class="text-center h-48 flex flex-col items-center justify-center text-gray-400">
+                <span class="text-4xl mb-2">📷</span>
+                <p class="text-sm">Chụp ảnh</p>
+              </div>
+              <p class="text-sm font-medium text-gray-700 mt-2 text-center">Thiết bị phía trong</p>
+              <input type="file" accept="image/*" capture="environment" onchange="handleDoorPhoto(this, 4, 216, 183)" class="hidden">
+            </label>
+          </div>
+
+          <div class="border-2 border-dashed border-gray-300 rounded-lg p-4">
+            <label class="cursor-pointer">
+              <div id="doorPreview5" class="text-center h-48 flex flex-col items-center justify-center text-gray-400">
+                <span class="text-4xl mb-2">📷</span>
+                <p class="text-sm">Chụp ảnh</p>
+              </div>
+              <p class="text-sm font-medium text-gray-700 mt-2 text-center">Khóa</p>
+              <input type="file" accept="image/*" capture="environment" onchange="handleDoorPhoto(this, 5, 437, 214)" class="hidden">
+            </label>
           </div>
         </div>
-      );
-    };
 
-    ReactDOM.render(<DoorSecurityApp />, document.getElementById('root'));
+        <div class="mb-6">
+          <label class="block text-sm font-semibold text-gray-700 mb-2">Ghi chú (tùy chọn)</label>
+          <textarea id="doorNote" rows="3" placeholder="Thêm ghi chú..." class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"></textarea>
+        </div>
+
+        <div class="flex gap-4">
+          <button onclick="saveDoor()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-3 px-6 rounded-lg font-semibold transition-colors">
+            Lưu Door
+          </button>
+          <button onclick="cancelCapture()" class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 py-3 px-6 rounded-lg font-semibold transition-colors">
+            Hủy
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Camera Capture Screen -->
+    <div id="cameraCaptureScreen" class="hidden">
+      <div class="bg-white rounded-xl shadow-lg p-6">
+        <h2 class="text-2xl font-bold text-gray-800 mb-6">📹 Thêm Camera mới</h2>
+        
+        <div class="mb-6">
+          <label class="block text-sm font-semibold text-gray-700 mb-2">Tên Camera *</label>
+          <input type="text" id="cameraName" placeholder="Ví dụ: Camera 01" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+        </div>
+
+        <div class="grid grid-cols-1 gap-6 mb-6">
+          <div class="border-2 border-dashed border-gray-300 rounded-lg p-4">
+            <label class="cursor-pointer">
+              <div id="cameraPreview" class="text-center flex flex-col items-center justify-center text-gray-400" style="height: 400px;">
+                <span class="text-6xl mb-3">📷</span>
+                <p class="text-sm">Chụp ảnh vị trí lắp camera</p>
+              </div>
+              <p class="text-sm font-medium text-gray-700 mt-2 text-center">Vị trí lắp Camera</p>
+              <input type="file" accept="image/*" capture="environment" onchange="handleCameraPhoto(this)" class="hidden">
+            </label>
+          </div>
+
+          <div class="border-2 border-gray-300 rounded-lg p-4 bg-gray-50">
+            <div class="text-center flex flex-col items-center justify-center text-gray-400" style="height: 400px;">
+              <span class="text-5xl mb-3">📋</span>
+              <p class="text-sm">Khung trống</p>
+            </div>
+            <p class="text-sm font-medium text-gray-700 mt-2 text-center">Dành cho ghi chú</p>
+          </div>
+        </div>
+
+        <div class="mb-6">
+          <label class="block text-sm font-semibold text-gray-700 mb-2">Ghi chú (tùy chọn)</label>
+          <textarea id="cameraNote" rows="3" placeholder="Thêm ghi chú..." class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"></textarea>
+        </div>
+
+        <div class="flex gap-4">
+          <button onclick="saveCamera()" class="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-3 px-6 rounded-lg font-semibold transition-colors">
+            Lưu Camera
+          </button>
+          <button onclick="cancelCapture()" class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 py-3 px-6 rounded-lg font-semibold transition-colors">
+            Hủy
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let items = [];
+    let currentDoor = { type: 'door', name: '', photos: {}, note: '' };
+    let currentCamera = { type: 'camera', name: '', photo: null, note: '' };
+
+    function selectType(type) {
+      if (type === 'door') {
+        document.getElementById('mainScreen').classList.add('hidden');
+        document.getElementById('doorCaptureScreen').classList.remove('hidden');
+        currentDoor = { type: 'door', name: '', photos: {}, note: '' };
+        document.getElementById('doorName').value = '';
+        document.getElementById('doorNote').value = '';
+        for (let i = 1; i <= 5; i++) {
+          document.getElementById('doorPreview' + i).innerHTML = '<span class="text-4xl mb-2">📷</span><p class="text-sm">Chụp ảnh</p>';
+        }
+      } else {
+        document.getElementById('mainScreen').classList.add('hidden');
+        document.getElementById('cameraCaptureScreen').classList.remove('hidden');
+        currentCamera = { type: 'camera', name: '', photo: null, note: '' };
+        document.getElementById('cameraName').value = '';
+        document.getElementById('cameraNote').value = '';
+        document.getElementById('cameraPreview').innerHTML = '<span class="text-6xl mb-3">📷</span><p class="text-sm">Chụp ảnh vị trí lắp camera</p>';
+      }
+    }
+
+    function cancelCapture() {
+      document.getElementById('doorCaptureScreen').classList.add('hidden');
+      document.getElementById('cameraCaptureScreen').classList.add('hidden');
+      document.getElementById('mainScreen').classList.remove('hidden');
+    }
+
+    function resizeImage(file, targetWidth, targetHeight, callback) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          canvas.width = targetWidth;
+          canvas.height = targetHeight;
+          const ctx = canvas.getContext('2d');
+
+          const imgRatio = img.width / img.height;
+          const targetRatio = targetWidth / targetHeight;
+
+          let drawWidth, drawHeight, offsetX = 0, offsetY = 0;
+
+          if (imgRatio > targetRatio) {
+            drawHeight = targetHeight;
+            drawWidth = img.width * (targetHeight / img.height);
+            offsetX = (targetWidth - drawWidth) / 2;
+          } else {
+            drawWidth = targetWidth;
+            drawHeight = img.height * (targetWidth / img.width);
+            offsetY = (targetHeight - drawHeight) / 2;
+          }
+
+          ctx.fillStyle = '#FFFFFF';
+          ctx.fillRect(0, 0, targetWidth, targetHeight);
+          ctx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
+
+          callback(canvas.toDataURL('image/jpeg', 0.85));
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function handleDoorPhoto(input, photoNum, width, height) {
+      const file = input.files[0];
+      if (file) {
+        resizeImage(file, width, height, (resizedImage) => {
+          currentDoor.photos[photoNum] = resizedImage;
+          document.getElementById('doorPreview' + photoNum).innerHTML = `<img src="${resizedImage}" class="w-full h-48 object-cover rounded">`;
+        });
+      }
+    }
+
+    function handleCameraPhoto(input) {
+      const file = input.files[0];
+      if (file) {
+        resizeImage(file, 1010, 1350, (resizedImage) => {
+          currentCamera.photo = resizedImage;
+          document.getElementById('cameraPreview').innerHTML = `<img src="${resizedImage}" class="w-full object-cover rounded" style="max-height: 400px;">`;
+        });
+      }
+    }
+
+    function saveDoor() {
+      const name = document.getElementById('doorName').value.trim();
+      const note = document.getElementById('doorNote').value.trim();
+
+      if (!name) {
+        alert('Vui lòng nhập tên Door!');
+        return;
+      }
+
+      if (Object.keys(currentDoor.photos).length < 5) {
+        alert('Vui lòng chụp đủ 5 ảnh!');
+        return;
+      }
+
+      currentDoor.name = name;
+      currentDoor.note = note;
+      items.push({ ...currentDoor });
+      
+      updateItemsList();
+      cancelCapture();
+    }
+
+    function saveCamera() {
+      const name = document.getElementById('cameraName').value.trim();
+      const note = document.getElementById('cameraNote').value.trim();
+
+      if (!name) {
+        alert('Vui lòng nhập tên Camera!');
+        return;
+      }
+
+      if (!currentCamera.photo) {
+        alert('Vui lòng chụp ảnh vị trí lắp camera!');
+        return;
+      }
+
+      currentCamera.name = name;
+      currentCamera.note = note;
+      items.push({ ...currentCamera });
+      
+      updateItemsList();
+      cancelCapture();
+    }
+
+    function updateItemsList() {
+      const list = document.getElementById('itemsList');
+      if (items.length === 0) {
+        list.innerHTML = '';
+        document.getElementById('exportSection').classList.add('hidden');
+        return;
+      }
+
+      document.getElementById('exportSection').classList.remove('hidden');
+
+      list.innerHTML = '<div class="bg-white rounded-xl shadow-lg p-6"><h2 class="text-xl font-bold text-gray-800 mb-4">Danh sách đã chụp (' + items.length + ')</h2><div class="space-y-4">' +
+        items.map((item, index) => {
+          if (item.type === 'door') {
+            return `
+              <div class="border border-gray-200 rounded-lg p-4 bg-blue-50">
+                <div class="flex items-center justify-between mb-3">
+                  <h3 class="text-lg font-semibold text-gray-800">🚪 ${item.name}</h3>
+                  <button onclick="deleteItem(${index})" class="text-red-500 hover:text-red-700">❌</button>
+                </div>
+                <div class="grid grid-cols-5 gap-2">
+                  ${Object.values(item.photos).map(photo => `<img src="${photo}" class="w-full h-24 object-cover rounded border">`).join('')}
+                </div>
+                ${item.note ? `<div class="mt-3 p-2 bg-white rounded"><p class="text-sm"><strong>Note:</strong> ${item.note}</p></div>` : ''}
+              </div>
+            `;
+          } else {
+            return `
+              <div class="border border-gray-200 rounded-lg p-4 bg-purple-50">
+                <div class="flex items-center justify-between mb-3">
+                  <h3 class="text-lg font-semibold text-gray-800">📹 ${item.name}</h3>
+                  <button onclick="deleteItem(${index})" class="text-red-500 hover:text-red-700">❌</button>
+                </div>
+                <div class="grid grid-cols-1 gap-2">
+                  <img src="${item.photo}" class="w-full h-32 object-cover rounded border">
+                  <div class="border rounded bg-gray-100 h-32 flex items-center justify-center text-gray-400">
+                    <span>Khung trống</span>
+                  </div>
+                </div>
+                ${item.note ? `<div class="mt-3 p-2 bg-white rounded"><p class="text-sm"><strong>Note:</strong> ${item.note}</p></div>` : ''}
+              </div>
+            `;
+          }
+        }).join('') + '</div></div>';
+    }
+
+    function deleteItem(index) {
+      items.splice(index, 1);
+      updateItemsList();
+    }
+
+    document.getElementById('fileName').addEventListener('input', (e) => {
+      document.getElementById('filePreview').textContent = e.target.value || 'Site_Pictures_Report';
+    });
+
+    function exportToWord() {
+      const fileName = document.getElementById('fileName').value.trim() || 'Site_Pictures_Report';
+
+      let html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
+        @page { size: A4; margin: 1.5cm; }
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
+        h1 { text-align: center; color: #1e3a5f; margin-bottom: 20px; font-size: 18px; }
+        table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        th { background-color: #1e3a5f; color: white; padding: 10px; text-align: center; font-weight: bold; border: 1px solid #000; font-size: 12px; }
+        td { border: 1px solid #000; padding: 8px; vertical-align: top; page-break-inside: avoid; }
+        tr { page-break-inside: avoid; page-break-after: always; }
+        tr:last-child { page-break-after: auto; }
+        .name-cell { width: 15%; text-align: center; font-weight: bold; font-size: 14px; }
+        .photo-cell { width: 70%; padding: 5px; }
+        .note-cell { width: 15%; font-size: 11px; }
+        .photo-label { font-weight: bold; font-size: 9px; color: #1e3a5f; margin-bottom: 2px; text-align: center; }
+        img { width: 180px; height: 270px; object-fit: cover; display: block; margin: 0 auto; }
+        .medium-img { width: 180px; height: 140px; object-fit: cover; }
+        .lock-img { width: 370px; height: 165px; object-fit: cover; }
+        .camera-img { width: 505px; height: 675px; object-fit: cover; }
+        .empty-frame { width: 505px; height: 675px; border: 2px solid #ccc; background: #f9f9f9; display: inline-block; }
+      </style></head><body><h1>Site Pictures</h1><table><thead><tr><th>Name</th><th>Attached Pictures</th><th>Note</th></tr></thead><tbody>`;
+
+      items.forEach(item => {
+        if (item.type === 'door') {
+          html += `<tr><td class="name-cell">${item.name}</td><td class="photo-cell"><table style="width: 100%; border: none;"><tr>
+            <td style="width: 50%; border: none; padding: 2px; text-align: center;"><div class="photo-label">Unsecured side</div><img src="${item.photos[1]}" /></td>
+            <td style="width: 50%; border: none; padding: 2px; text-align: center;"><div class="photo-label">Secured side</div><img src="${item.photos[3]}" /></td>
+            </tr><tr>
+            <td style="width: 50%; border: none; padding: 2px; text-align: center;"><img src="${item.photos[2]}" class="medium-img" /></td>
+            <td style="width: 50%; border: none; padding: 2px; text-align: center;"><img src="${item.photos[4]}" class="medium-img" /></td>
+            </tr><tr>
+            <td colspan="2" style="border: none; padding: 2px; text-align: center;"><img src="${item.photos[5]}" class="lock-img" /></td>
+            </tr></table></td><td class="note-cell">${item.note || ''}</td></tr>`;
+        } else {
+          html += `<tr><td class="name-cell">${item.name}</td><td class="photo-cell"><table style="width: 100%; border: none;">
+            <tr><td style="border: none; padding: 2px; text-align: center;"><img src="${item.photo}" class="camera-img" /></td></tr>
+            <tr><td style="border: none; padding: 2px; text-align: center;"><div class="empty-frame"></div></td></tr>
+            </table></td><td class="note-cell">${item.note || ''}</td></tr>`;
+        }
+      });
+
+      html += '</tbody></table></body></html>';
+
+      const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName + '.doc';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
   </script>
 </body>
 </html>
