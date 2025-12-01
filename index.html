@@ -33,6 +33,7 @@
         note: ''
       });
       const [isCapturing, setIsCapturing] = useState(false);
+      const [fileName, setFileName] = useState('Door_Security_Report');
 
       const photoLabels = {
         exteriorOverview: 'Tổng quan phía ngoài cửa',
@@ -42,57 +43,75 @@
         lock: 'Khóa'
       };
 
-      const handlePhotoCapture = (photoType, e) => {
-        const file = e.target.files[0];
-        if (file) {
+      const resizeImage = (file, targetWidth, targetHeight) => {
+        return new Promise((resolve) => {
           const reader = new FileReader();
-          reader.onloadend = () => {
+          reader.onload = (e) => {
             const img = new Image();
             img.onload = () => {
-              // Determine target size based on photo type
-              let targetWidth, targetHeight;
-              if (photoType === 'exteriorOverview' || photoType === 'interiorOverview') {
-                targetWidth = 216;
-                targetHeight = 348;
-              } else if (photoType === 'lock') {
-                targetWidth = 437;
-                targetHeight = 214;
-              } else {
-                targetWidth = 216;
-                targetHeight = 183;
-              }
-
-              // Create canvas to resize
               const canvas = document.createElement('canvas');
               canvas.width = targetWidth;
               canvas.height = targetHeight;
               const ctx = canvas.getContext('2d');
 
-              // Calculate scaling to cover the frame
-              const scale = Math.max(targetWidth / img.width, targetHeight / img.height);
-              const scaledWidth = img.width * scale;
-              const scaledHeight = img.height * scale;
-              
-              // Center the image
-              const x = (targetWidth - scaledWidth) / 2;
-              const y = (targetHeight - scaledHeight) / 2;
+              // Calculate aspect ratios
+              const imgRatio = img.width / img.height;
+              const targetRatio = targetWidth / targetHeight;
 
-              ctx.drawImage(img, x, y, scaledWidth, scaledHeight);
+              let drawWidth, drawHeight, offsetX = 0, offsetY = 0;
 
-              // Convert to base64
-              const resizedImage = canvas.toDataURL('image/jpeg', 0.9);
-              
-              setCurrentDoor(prev => ({
-                ...prev,
-                photos: {
-                  ...prev.photos,
-                  [photoType]: resizedImage
-                }
-              }));
+              if (imgRatio > targetRatio) {
+                // Image is wider, fit to height
+                drawHeight = targetHeight;
+                drawWidth = img.width * (targetHeight / img.height);
+                offsetX = (targetWidth - drawWidth) / 2;
+              } else {
+                // Image is taller, fit to width
+                drawWidth = targetWidth;
+                drawHeight = img.height * (targetWidth / img.width);
+                offsetY = (targetHeight - drawHeight) / 2;
+              }
+
+              // Fill background white
+              ctx.fillStyle = '#FFFFFF';
+              ctx.fillRect(0, 0, targetWidth, targetHeight);
+
+              // Draw image centered
+              ctx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
+
+              resolve(canvas.toDataURL('image/jpeg', 0.85));
             };
-            img.src = reader.result;
+            img.src = e.target.result;
           };
           reader.readAsDataURL(file);
+        });
+      };
+
+      const handlePhotoCapture = async (photoType, e) => {
+        const file = e.target.files[0];
+        if (file) {
+          let targetWidth, targetHeight;
+          
+          if (photoType === 'exteriorOverview' || photoType === 'interiorOverview') {
+            targetWidth = 216;
+            targetHeight = 348;
+          } else if (photoType === 'lock') {
+            targetWidth = 437;
+            targetHeight = 214;
+          } else {
+            targetWidth = 216;
+            targetHeight = 183;
+          }
+
+          const resizedImage = await resizeImage(file, targetWidth, targetHeight);
+          
+          setCurrentDoor(prev => ({
+            ...prev,
+            photos: {
+              ...prev.photos,
+              [photoType]: resizedImage
+            }
+          }));
         }
       };
 
@@ -124,6 +143,11 @@
       };
 
       const exportToWord = () => {
+        if (!fileName.trim()) {
+          alert('Vui lòng nhập tên file!');
+          return;
+        }
+
         let html = `
           <!DOCTYPE html>
           <html>
@@ -275,7 +299,7 @@
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = 'Door_Security_Report.doc';
+        link.download = `${fileName.trim()}.doc`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
