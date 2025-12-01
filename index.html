@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Door Security Documentation App">
-  <title>Door Security Documentation</title>
+  <title>SnapReport</title>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -47,13 +47,50 @@
         if (file) {
           const reader = new FileReader();
           reader.onloadend = () => {
-            setCurrentDoor(prev => ({
-              ...prev,
-              photos: {
-                ...prev.photos,
-                [photoType]: reader.result
+            const img = new Image();
+            img.onload = () => {
+              // Determine target size based on photo type
+              let targetWidth, targetHeight;
+              if (photoType === 'exteriorOverview' || photoType === 'interiorOverview') {
+                targetWidth = 216;
+                targetHeight = 348;
+              } else if (photoType === 'lock') {
+                targetWidth = 437;
+                targetHeight = 214;
+              } else {
+                targetWidth = 216;
+                targetHeight = 183;
               }
-            }));
+
+              // Create canvas to resize
+              const canvas = document.createElement('canvas');
+              canvas.width = targetWidth;
+              canvas.height = targetHeight;
+              const ctx = canvas.getContext('2d');
+
+              // Calculate scaling to cover the frame
+              const scale = Math.max(targetWidth / img.width, targetHeight / img.height);
+              const scaledWidth = img.width * scale;
+              const scaledHeight = img.height * scale;
+              
+              // Center the image
+              const x = (targetWidth - scaledWidth) / 2;
+              const y = (targetHeight - scaledHeight) / 2;
+
+              ctx.drawImage(img, x, y, scaledWidth, scaledHeight);
+
+              // Convert to base64
+              const resizedImage = canvas.toDataURL('image/jpeg', 0.9);
+              
+              setCurrentDoor(prev => ({
+                ...prev,
+                photos: {
+                  ...prev.photos,
+                  [photoType]: resizedImage
+                }
+              }));
+            };
+            img.src = reader.result;
           };
           reader.readAsDataURL(file);
         }
@@ -280,9 +317,9 @@
             <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
               <h1 className="text-3xl font-bold text-gray-800 mb-2 flex items-center gap-3">
                 <CameraIcon />
-                Door Security Documentation
+                SnapReport
               </h1>
-              <p className="text-gray-600">Chụp ảnh và tạo báo cáo cho các cửa</p>
+              <p className="text-gray-600">Project Photo Documentation</p>
             </div>
 
             {!isCapturing ? (
